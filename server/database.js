@@ -63,7 +63,7 @@ firebaseMethods.newUser = function (cb) {
 };
 
 firebaseMethods.newAlarm = function ({
-  userId, label, time, prepTime, postTime, locationId, travelMethod, snoozes, snoozeTime, alarmSound,
+  userId, label, time, prepTime, postTime, locationId, travelMethod, snoozes, snoozeTime, alarmSound, repeatDays,
 }, cb) {
   cb(firebase.database().ref(`users/${userId}/alarms`).push({
     label,
@@ -75,12 +75,13 @@ firebaseMethods.newAlarm = function ({
     onOff: false,
     location: locationId,
     travelMethod,
-    alarmSound: alarmSound || 'annoying',
+    alarmSound,
+    repeatDays,
   }).key);
 };
 
 firebaseMethods.editAlarm = function ({
-  userId, alarmId, label, time, prepTime, postTime, onOff, locationId, travelMethod, snoozes, snoozeTime, alarmSound,
+  userId, alarmId, label, time, prepTime, postTime, onOff, locationId, travelMethod, snoozes, snoozeTime, alarmSound, repeatDays,
 }, cb) {
   cb(firebase.database().ref(`users/${userId}/alarms/${alarmId}`).update({
     label,
@@ -93,6 +94,7 @@ firebaseMethods.editAlarm = function ({
     location: locationId,
     travelMethod,
     alarmSound,
+    repeatDays,
   }).key);
 };
 

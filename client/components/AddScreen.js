@@ -13,21 +13,20 @@ import axios from 'axios';
 export default class AddScreen extends React.Component {
   constructor(props) {
     super(props);
-    console.log(this.props);
-    let { data, settings } = this.props.navigation.state.params
     if(this.props.navigation.state.params.data) {
       this.state = {
         showTime: false,
-        label: data.label,
-        time: data.time,
-        prepTime: data.prepTime,
-        postTime: data.postTime,
-        locationId: data.locationId,
-        address: data.address,
-        snoozes: data.snoozes,
-        snoozeTime: data.snoozeTime,
-        alarmSound: data.alarmSound,
-        onOff: data.onOff,
+        label: this.props.navigation.state.params.data.label,
+        time: this.props.navigation.state.params.data.time,
+        prepTime: this.props.navigation.state.params.data.prepTime,
+        postTime: this.props.navigation.state.params.data.postTime,
+        locationId: this.props.navigation.state.params.data.locationId,
+        address: this.props.navigation.state.params.data.address,
+        snoozes: this.props.navigation.state.params.data.snoozes,
+        snoozeTime: this.props.navigation.state.params.data.snoozeTime,
+        alarmSound: this.props.navigation.state.params.data.alarmSound,
+        repeatDays: this.props.navigation.state.params.data.repeatDays,
+        onOff: this.props.navigation.state.params.data.onOff,
         edit: true,
         travelMethod: data.travelMethod,
       };
@@ -40,9 +39,10 @@ export default class AddScreen extends React.Component {
         postTime: settings.defaultPostTime,
         locationId: null,
         address: 'Search',
-        snoozes: settings.defaultSnoozes,
-        snoozeTime: settings.defaultSnoozeTime,
-        alarmSound: settings.defaulAlarmSound,
+        snoozes: this.props.navigation.state.params.settings.defaultSnoozes,
+        snoozeTime: this.props.navigation.state.params.settings.defaultSnoozeTime,
+        alarmSound: this.props.navigation.state.params.settings.defaulAlarmSound,
+        repeatDays: [],
         onOff: false,
         edit: false,
         travelMethod: 'Driving',
@@ -76,7 +76,7 @@ export default class AddScreen extends React.Component {
   }
 
   saveAlarm() {
-    let { label, time, prepTime, postTime, locationId, address, snoozes, snoozeTime, alarmSound, onOff, travelMethod } = this.state;
+    let { label, time, prepTime, postTime, locationId, address, snoozes, snoozeTime, alarmSound, repeatDays, onOff, travelMethod } = this.state;
     store.get('places').then((places) => {
       if (places[locationId]) {
         places[locationId].count += 1;
@@ -105,6 +105,7 @@ export default class AddScreen extends React.Component {
         snoozes,
         snoozeTime,
         travelMethod,
+        repeatDays,
         alarmSound
       })
       .then(data => {
@@ -120,12 +121,11 @@ export default class AddScreen extends React.Component {
             snoozes,
             snoozeTime,
             travelMethod,
+            repeatDays,
             alarmSound
           };
-          console.log(alarms);
           store.save('alarms', alarms).then(() => {
             if(onOff) {
-              console.log('its goioooing', onOff);
               this.props.navigation.state.params.commuteData('commutetime/single', this.props.navigation.state.params.data, true)
             } else {
               this.props.navigation.navigate('AlarmsScreen');
@@ -146,10 +146,10 @@ export default class AddScreen extends React.Component {
         snoozes,
         snoozeTime,
         travelMethod,
+        repeatDays,
         alarmSound,
       })
       .then(data => {
-        console.log(data.data);
         store.get('alarms').then(alarms => {
           alarms[data.data] = {
             label,
@@ -162,9 +162,9 @@ export default class AddScreen extends React.Component {
             snoozes,
             snoozeTime,
             travelMethod,
+            repeatDays,
             alarmSound,
           };
-          console.log(alarms);
           store.save('alarms', alarms).then(() => {
             this.props.navigation.navigate('AlarmsScreen');
           });
@@ -180,7 +180,6 @@ export default class AddScreen extends React.Component {
     timeString.splice(timeString.indexOf(':', 3), 3);
     timeString = timeString.join('');
     let favPlaces = this.props.navigation.state.params.favPlaces;
-    console.log(favPlaces);
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'space-around' }}>
         <View style={{ flex: 0, position: 'absolute', width: '100%', top: '18%', backgroundColor: 'white', zIndex: 100 }}>
@@ -204,12 +203,10 @@ export default class AddScreen extends React.Component {
             placeholder={this.state.address}
             minLength={2} // minimum length of text to search
             onPress={(data, details = null) => { // 'details' is provided when fetchDetails = true
-              console.log(details);
-              console.log(data);
               this.setState({
                 locationId: data.place_id,
                 address: data.description,
-              }, () => console.log(this.state));
+              });
             }}
             query={{
               key: 'AIzaSyAZkNBg_R40VwsvNRmqdGe7WdhkLVyuOaw',
@@ -304,7 +301,7 @@ export default class AddScreen extends React.Component {
             }}
           />
         </View>
-        <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '60%'  }}>
+        <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '60%' }}>
           <Text style={{ fontWeight: '800' }}>Repeat Days: </Text>
           <CustomMultiPicker
             options={{0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Friday', 5: 'Saturday', 6: 'Sunday'}}
@@ -312,16 +309,16 @@ export default class AddScreen extends React.Component {
             placeholder={"Search"}
             placeholderTextColor={'#757575'}
             returnValue={"value"}
-            callback={(res)=>{ console.log(Number('res')) }} // callback, array of selected items
+            callback={(res)=>{ this.setState({ repeatDays: res.map(d => Number(d)) }) }} // callback, array of selected items
             rowBackgroundColor={"#eee"}
-            rowHeight={40}
-            rowRadius={5}
+            rowHeight={30}
+            rowRadius={3}
             iconColor={"#00a2dd"}
-            iconSize={30}
+            iconSize={20}
             selectedIconName={"ios-checkmark-circle-outline"}
             unselectedIconName={"ios-radio-button-off-outline"}
-            scrollViewHeight={130}
-            selected={[1,2]} // list of options which are selected by default
+            scrollViewHeight={400}
+            selected={this.state.repeatDays.map(d => String(d))} // list of options which are selected by default
           />
         </View>
         <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>

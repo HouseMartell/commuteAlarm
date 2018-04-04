@@ -44,7 +44,10 @@ function AlarmsList({ userId, userSettings, alarms, modifyAlarms, deleteAlarm, e
                 style={{ flex: 2 }}
                 tintColor="lightgrey"
                 value={item.onOff}
-                onValueChange={() => switchChange(item, userId, userSettings, modifyAlarms)}
+                onValueChange={(x) => {
+                  item.onOff = !item.onOff;
+                  switchChange(item, userId, userSettings, modifyAlarms);
+                }}
               />
               <View style={{ flex: 0.5 }} />
             </View>

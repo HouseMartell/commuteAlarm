@@ -55,7 +55,6 @@ const setSchedule = () => {
     BackgroundGeolocation.stop(() => {
       store.get('alarms').then((alarms) => {
         schedule = Object.entries(alarms).filter(alarm => alarm[1].onOff).map(alarm => alarm[1].scheduleStr).concat(Object.entries(alarms).filter(alarm => alarm[1].onOff).map(alarm => alarm[1].scheduleStrArrive));
-        console.log(schedule);
         BackgroundGeolocation.setConfig({
           schedule,
           // heartbeatInterval: 1,
@@ -63,10 +62,8 @@ const setSchedule = () => {
           logLevel: BackgroundGeolocation.LOG_LEVEL_OFF,
         }, () => {
           BackgroundGeolocation.startSchedule((state) => {
-            console.log("schedule has been started");
             if (!state.enabled) {
               BackgroundGeolocation.start(() => {
-                console.log("GEO STARTED!", schedule)
               });
             }
           });

@@ -3,7 +3,7 @@ const config = require('./config.js');
 
 exports.getCommuteTime = (alarm, GPSLat, GPSLong) => {
   let {
-    alarmId, label, location, onOff, postTime, prepTime, snoozes, snoozeTime, alarmSound, time, travelMethod,
+    alarmId, label, location, onOff, postTime, prepTime, snoozes, snoozeTime, alarmSound, time, travelMethod, repeatDays,
   } = alarm;
   const rootURL = 'https://maps.googleapis.com/maps/api/directions/json?';
 
@@ -31,6 +31,7 @@ exports.getCommuteTime = (alarm, GPSLat, GPSLong) => {
       snoozes,
       snoozeTime,
       alarmSound,
+      repeatDays,
       commuteData: data.data,
     })).catch(err => console.log('error in getCommuteTime (server/apiHelpers.js) with this alarm:', alarm));
 };

@@ -9,10 +9,8 @@ import { getLocationParams, getLocationErr } from './geoWorker';
 let alarmsListFunctions = {};
 
 const updateAlarms = (id, onOff, goOffTime, modifyAlarms, edit) => {
-  console.log('herer we are', id, goOffTime, onOff);
   store.get('alarms')
     .then((alarms) => {
-      console.log('askdfbakjsdbfasbdfahsdf',alarms);
       const newAlarms = Object.keys(alarms).map((k) => {
         if (k === id) {
           alarms[k].onOff = onOff;
@@ -27,7 +25,6 @@ const updateAlarms = (id, onOff, goOffTime, modifyAlarms, edit) => {
         return alarms[k];
       });
       modifyAlarms(newAlarms, edit);
-      console.log(alarms);
       store.save('alarms', alarms);
     });
 };
@@ -40,20 +37,19 @@ const alarmOn = (item, userId, userSettings, modifyAlarms) => {
 
 const switchChange = (item, userId, userSettings, modifyAlarms, notif) => {
   let {
-    label, time, prepTime, postTime, locationId, address, snoozes, snoozeTime, onOff, id, travelMethod, alarmSound
+    label, time, prepTime, postTime, locationId, address, snoozes, snoozeTime, onOff, id, travelMethod, alarmSound, repeatDays,
   } = item;
 
   if (item.time < Date.now()) {
     return setTimeout(() => Alert.alert('This alarm has already passed =\'('), 300);
   }
   store.get('alarms').then((alarmsObj) => {
-    console.log(alarmsObj[id]);
     if (alarmsObj[id].turnedOff) {
       return setTimeout(() => Alert.alert('This alarm has already passed =\'('), 300);
     }
 
-    onOff = !onOff;
-    updateAlarms(id, onOff, undefined, modifyAlarms);
+    //onOff = !onOff;
+    updateAlarms(id, onOff, undefined, modifyAlarms, false);
     axios.post('http://localhost:8082/alarm/edit', {
       userId,
       alarmId: id,
@@ -68,6 +64,7 @@ const switchChange = (item, userId, userSettings, modifyAlarms, notif) => {
       onOff,
       travelMethod,
       alarmSound,
+      repeatDays,
     }).catch((err) => {
       console.log('ERRRRRRRRROR', err);
     });
@@ -75,11 +72,11 @@ const switchChange = (item, userId, userSettings, modifyAlarms, notif) => {
     if (onOff && !notif) {
       alarmOn(item, userId, userSettings, modifyAlarms);
     } else {
-      updateAlarms(id, false, undefined, modifyAlarms);
-      PushNotification.cancelLocalNotifications({ id })
+      // updateAlarms(id, false, undefined, modifyAlarms);
+      PushNotification.cancelLocalNotifications({ id });
     }
   })
-  .catch(console.log('error in switchChange'));
+    .catch(err => console.log('error in switchChange,', err));
 };
 
 module.exports = { switchChange, alarmOn, updateAlarms };

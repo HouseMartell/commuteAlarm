@@ -29,6 +29,72 @@ PushNotification.configure({
   onNotification(notification) {
     console.log( 'NOTIFICATION:', notification);
 
+    let repeat = () => {
+      console.log(notification.data.alarmData);
+      if (notification.data.alarmData.repeatDays.length > 0) {
+        const currentDate = new Date(Date.now());
+        currentDate.setDate(currentDate.getDate() - 1);
+        const currentDay = currentDate.getDay();
+        let nextday = null;
+        let i;
+        if (currentDay === 6) {
+          i = 0;
+        } else {
+          i = currentDay + 1;
+        }
+        for (i; i < 7; i +=1) {
+          if (notification.data.alarmData.repeatDays.includes(i) && nextday === null) {
+            nextday = i;
+          }
+        }
+        for (i = 0; i < 7; i +=1) {
+          if (notification.data.alarmData.repeatDays.includes(i) && nextday === null) {
+            nextday = i;
+          }
+        }
+        if (i === 6) {
+          i = 0;
+        } else {
+          i -= 1;
+        }
+        store.get('alarms').then((alarms) => {
+          alarms[notification.data.id].onOff = true;
+          alarms[notification.data.id].goOffTime = alarms[notification.data.id].time + 1000*60*60*24*7;
+          let old = new Date(alarms[notification.data.id].time);
+          console.log(old);
+          if (i > old.getDay()) {
+            old.setDate(old.getDate() + (i - old.getDay()));
+          } else {
+            old.setDate(old.getDate() + (7 + (i - old.getDay())));
+          }
+          console.log(old);
+          console.log(new Date(alarms[notification.data.id].goOffTime));
+          alarms[notification.data.id].time = old.getTime();
+          store.save('alarms', alarms);
+          const { label, time, prepTime, postTime, locationId, onOff, address, snoozes, snoozeTime, travelMethod, repeatDays, alarmSound } = alarms[notification.data.id];
+          axios.post('http://localhost:8082/alarm/edit', {
+            userId: notification.data.userId,
+            alarmId: notification.data.id,
+            label,
+            time,
+            prepTime,
+            postTime,
+            //locationId,
+            onOff: true,
+            //address,
+            snoozes,
+            snoozeTime,
+            //travelMethod,
+            repeatDays,
+            alarmSound,
+          })
+            .then(() => {
+              this.commuteData('commutetime/single', alarms[notification.data.id], false);
+            });
+        });
+      }
+    };
+
     if (notification.userInteraction) {
       updateAlarms(notification.data.id, false, '', this.modAlarms, false);
       BackgroundGeolocation.getCurrentPosition((location) => {
@@ -53,7 +119,6 @@ PushNotification.configure({
       store.get('alarms').then((alarms) => {
         Geocoder.getFromLocation(alarms[notification.data.id].address).then((json) => {
           let { location } = json.results[0].geometry;
-          console.log(location);
           BackgroundGeolocation.addGeofence({
             identifier: 'End',
             radius: 150,
@@ -78,6 +143,7 @@ PushNotification.configure({
       // This is to remove all past notifications from the notifications screen.
       PushNotificationIOS.removeAllDeliveredNotifications();
     } else if (Date.parse(notification.data.alarmTime) > (Date.now() - 100)) {
+
       Sound.setCategory('Playback');
       let whoosh = new Sound('annoying.mp3', Sound.MAIN_BUNDLE, (err) => {
         if (err) throw err;
@@ -103,6 +169,7 @@ PushNotification.configure({
       ]);
     }
     PushNotification.cancelLocalNotifications({ id: notification.data.id });
+    repeat.call(this);
     notification.finish(PushNotificationIOS.FetchResult.NoData);
   },
 
@@ -186,7 +253,6 @@ export default class AlarmsScreen extends React.Component {
     });
 
     BackgroundGeolocation.on('heartbeat', ({ location }) => {
-      console.log("THIS IS THE HEARTBEAT LISTENER", location);
       getCommuteData(this.state, 'commutetime', null, this.modifyAlarms, updateAlarms, location);
       axios.post('http://localhost:8082/user/geolocation', {
         location,
@@ -195,7 +261,6 @@ export default class AlarmsScreen extends React.Component {
     });
 
     BackgroundGeolocation.on('geofence', (geofence) => {
-      console.log("THIS IS THE GEOFENCE", geofence);
       const { alarmId, identifier } = geofence.extras;
       store.get('alarms').then((alarms) => {
         if (identifier === 'Start') {
@@ -218,11 +283,6 @@ export default class AlarmsScreen extends React.Component {
       });
     });
 
-    // BackgroundGeolocation.on("location", (location) => {
-    //   console.log(location);
-    //   //getCommuteData(this.state, 'commutetime', null, this.modifyAlarms, updateAlarms, location);
-    // });
-
     BackgroundGeolocation.ready(geoConfig, (state) => {
       if (!state.enabled) {
         // Start tracking!
@@ -233,6 +293,7 @@ export default class AlarmsScreen extends React.Component {
 
   componentDidMount() {
     PushNotification.modAlarms = this.modifyAlarms;
+    PushNotification.commuteData = this.commuteData;
     // BackgroundTask.schedule();
     store.get('userId').then((id) => {
       if (id === null) {
@@ -260,14 +321,12 @@ export default class AlarmsScreen extends React.Component {
         });
       } else {
         store.get('userSettings').then((settings) => {
-          console.log(settings);
           this.setState({
             userId: id,
             userSettings: settings,
           });
         }).then(() => {
           store.get('alarms').then((alarms) => {
-            console.log(alarms);
             this.setState({
               alarms: Object.keys(alarms).map((k) => {
                 alarms[k].id = k;
@@ -278,7 +337,6 @@ export default class AlarmsScreen extends React.Component {
         });
         store.get('places').then((places) => {
           let favPlaces = Object.entries(places).sort((a, b) => a[1].count < b[1].count);
-          console.log(favPlaces);
           favPlaces = favPlaces.map(p => ({ description: p[1].address, place_id: p[0] })).slice(0,2);
           this.setState({
             favPlaces,
@@ -294,6 +352,7 @@ export default class AlarmsScreen extends React.Component {
 
   commuteData(url, item, edit) {
     BackgroundGeolocation.getCurrentPosition((location) => {
+      console.log(item);
       getCommuteData(this.state, url, item, this.modifyAlarms, updateAlarms, location, edit);
     });
   }
@@ -320,11 +379,11 @@ export default class AlarmsScreen extends React.Component {
   }
 
   editScreen(item) {
-    console.log(item);
     this.props.navigation.navigate('AddScreen', {
       data: item,
       userId: this.state.userId,
       commuteData: this.commuteData,
+      favPlaces: this.state.favPlaces,
     });
   }
 
@@ -346,7 +405,6 @@ export default class AlarmsScreen extends React.Component {
   }
 
   modifyAlarms(alarms, edit) {
-    console.log('modify: ', alarms);
     this.setState({
       alarms,
     }, () => {
